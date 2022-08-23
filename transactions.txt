@@ -1,0 +1,8 @@
+Alice,Carol,20
+Bob,Carol,30
+Bob,Diana,40
+Hasan,Beril,50
+James,Kerem,80
+Can,Kerem,70
+Kerem,Hasan,40
+Hasan,Can,50
