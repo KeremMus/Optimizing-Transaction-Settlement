@@ -6,6 +6,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	//"golang.org/x/exp/slices"
+	//"golang.org/x/tools/go/analysis/passes/nilfunc"
 )
 
 type Transaction struct {// Contains parsed transaction data
@@ -29,8 +32,14 @@ func stringInSlice(a Transaction, list []Transaction) bool { // Used to determin
 	return false
 }
 
-func remove(slice []Transaction, s int) []Transaction {// Removes an element with given index from a slice and returns the resulting slice 
-	return append(slice[:s], slice[s+1:]...)
+func remover(slice []Transaction, i int) []Transaction {// Removes an element with given index from a slice and returns the resulting slice 
+	//return append(slice[:i], slice[i+1:]...)
+	// copy(slice[s:], slice[s+1:])
+	// slice[len(slice)-1] = Transaction{}
+	// slice = slice[:len(slice)-1]
+	// return slice
+	copy(slice[i:], slice[i+1:])
+    return slice[:len(slice)-1]
 }
 
 func removefromstring(slice []string, s int) []string {// Removes an element with given index from a slice and returns the resulting slice 
@@ -42,7 +51,7 @@ func removefromstring(slice []string, s int) []string {// Removes an element wit
 }
 
 func gettext(transactions []Transaction) []Transaction { // Gets text from the .txt file and parses it into an empty transaction slice  and returns the non-empty transaction slice
-	file, ferr := os.Open("/Users/keremcanbkr/Internship/transactions.txt")
+	file, ferr := os.Open("/Users/keremcanbkr/Internship/Optimizing Tx Settlement/transactions.txt")
 	check(ferr)
 	scanner := bufio.NewScanner(file)
 	count := 0
@@ -93,7 +102,7 @@ func mergemultiedges(transactions []Transaction, processed []Transaction) []Tran
 	}
 	for k := 0; k < len(processed); k++ {
 		if processed[k].amount == 0 {
-			remove(processed, k)
+			remover(processed, k)
 			if len(processed) > 0 {
 				processed = processed[:len(processed)-1]
 			}
@@ -113,75 +122,39 @@ func getadjlist(transactions []Transaction) map[string][]string {
 
 
 
-func checkcycle(from string, adjList map[string][]string, visited map[string]bool, dfsvisited map[string]bool,cycles map[string][]string) (int, map[string][]string) {
-	dfsvisited[from] = true
-	visited[from] = true
-	if adjList[from] == nil {
-		dfsvisited[from] = false
-		return 2, cycles
-	}
-	for _, to := range adjList[from] {
-		if !visited[to] {
-			cycles[from] = append(cycles[from], to)
-			flag := 0
-			flag, cycles = checkcycle(to, adjList, visited, dfsvisited,cycles)
-			if flag == 1 {
-				return 1 , cycles
-			}else if flag == 2 {
-				cycles[from] = nil
-				continue
-			}else if dfsvisited[to] {
-				return 1 , cycles
-			}
-		}
-		dfsvisited[from] = false
-		if len(cycles[from]) == 1 {
-			cycles[from] = nil
-			return 0, cycles
-		}
-	}
-	return 0, cycles
-}
-
-func iscyclic(transactions []Transaction, adjList map[string][]string) (bool, map[string][]string) {
-	visited := make(map[string]bool)
-	dfsvisited := make(map[string]bool)
-	cycles := make(map[string][]string)
-	for _, txer := range getuniquetxers(transactions) {
-		visited[txer] = false
-		dfsvisited[txer] = false
-	}
-	for i:=0; i<len(transactions); i++ {
-		if !visited[transactions[i].from] {
-			cycles[transactions[i].from] = nil
-			flag := 0
-			flag, cycles = checkcycle(transactions[i].from, adjList, visited, dfsvisited,cycles)
-			if flag == 1 {
-				return true , cycles
-			}
-		}
-	}
-	return false, cycles		
-}
-
-
-
-// func checkcycle(from string, adjList map[string][]string, visited map[string]bool, dfsvisited map[string]bool) bool {
+// func checkcycle(from string, adjList map[string][]string, visited map[string]bool, dfsvisited map[string]bool,cycles *map[string][]string) (int, *map[string][]string) {
 // 	dfsvisited[from] = true
 // 	visited[from] = true
+// 	if adjList[from] == nil {
+// 		dfsvisited[from] = false
+// 		return 2, cycles
+// 	}
 // 	for _, to := range adjList[from] {
 // 		if !visited[to] {
-// 			if checkcycle(to, adjList, visited, dfsvisited) {
-// 				return true
+// 			(*cycles)[from] = append((*cycles)[from], to)
+// 			flag := 0
+// 			flag, cycles = checkcycle(to, adjList, visited, dfsvisited, cycles)
+// 			if flag == 1 {
+// 				return 1 , cycles
+// 			}else if flag == 2 {
+// 				(*cycles)[from] = nil
+// 				continue
+// 			}else if dfsvisited[to] {
+// 				return 1 , cycles
 // 			}
-// 		} else if dfsvisited[to] {
-// 			return true
+// 		}
+// 		dfsvisited[from] = false
+// 		if len((*cycles)[from]) == 1 {
+// 			(*cycles)[from] = nil
+// 			return 0, cycles
 // 		}
 // 	}
-// 	dfsvisited[from] = false
-// 	return false
+// 	return 0, cycles
 // }
-// func iscyclic(transactions []Transaction, adjList map[string][]string) bool {
+
+
+
+// func iscyclic(transactions []Transaction, adjList map[string][]string, cycles *map[string][]string) (bool, map[string][]string) {
 // 	visited := make(map[string]bool)
 // 	dfsvisited := make(map[string]bool)
 // 	for _, txer := range getuniquetxers(transactions) {
@@ -190,25 +163,108 @@ func iscyclic(transactions []Transaction, adjList map[string][]string) (bool, ma
 // 	}
 // 	for i:=0; i<len(transactions); i++ {
 // 		if !visited[transactions[i].from] {
-// 			if checkcycle(transactions[i].from, adjList, visited, dfsvisited) {
-// 				return true
+// 			(*cycles)[transactions[i].from] = nil
+// 			flag := 0
+// 			flag, cycles = checkcycle(transactions[i].from, adjList, visited, dfsvisited, cycles)
+// 			if flag == 1 {
+// 				return true , (*cycles)
 // 			}
 // 		}
 // 	}
-// 	return false		
+// 	return false, (*cycles)
 // }
 
 
 
+func checkcycle(from string, adjList map[string][]string, visited map[string]bool, dfsvisited map[string]bool, loopelements *[]string) (bool, []string) {
+	dfsvisited[from] = true
+	visited[from] = true
+	for _, to := range adjList[from] {
+		if !visited[to] {
+			res, _ := checkcycle(to, adjList, visited, dfsvisited, loopelements)
+			if res {
+				for k, _ := range dfsvisited {
+					if(dfsvisited[k] && !isinlist(k, *loopelements)) {
+						*loopelements = append((*loopelements), k)
+					}
+				}
+				return true, *loopelements
+			}
+		} else if dfsvisited[to] {
+			return true, *loopelements 
+		}
+	}
+	dfsvisited[from] = false
+	return false, *loopelements
+}
+
+func iscyclic(transactions []Transaction, adjList map[string][]string, loopelements *[]string) (bool, []string) {
+	visited := make(map[string]bool)
+	dfsvisited := make(map[string]bool)
+	for _, txer := range getuniquetxers(transactions) {
+		visited[txer] = false
+		dfsvisited[txer] = false
+	}
+	for i:=0; i<len(transactions); i++ {
+		if !visited[transactions[i].from] {
+			res, _ := checkcycle(transactions[i].from, adjList, visited, dfsvisited, loopelements)
+			if res {
+				return true , *loopelements
+
+			}
+		}
+	}
+	return false , *loopelements		
+}
+
+
+
+
+
+func loopfixer(transactions []Transaction, loopelements []string) []Transaction {
+	leastfrom := ""
+	leastto := ""
+	var leastamount float32 
+	leastamount = 1000000.0
+	var resulttx []Transaction
+	for i:=0; i<len(loopelements); i++ {
+		for j:=0; j<len(transactions); j++ {
+			if transactions[j].from == loopelements[i] && transactions[j].amount < leastamount {
+				leastfrom = transactions[j].from
+				leastto = transactions[j].to
+				leastamount = transactions[j].amount
+			}
+		}
+	}
+	for i:=0; i<len(transactions); i++ {
+		if transactions[i].from == leastfrom && transactions[i].to == leastto {
+			resulttx = remover(transactions, i)
+		}
+		for j:=0; j<len(loopelements); j++ {
+			if transactions[i].from == loopelements[j] && isinlist(transactions[i].to, loopelements) {
+				transactions[i].amount -= float32(leastamount)
+			}
+		}
+	}
+	return resulttx
+}
 func main() {
+	loopelements := make([]string, 0)
 	var transactions []Transaction
 	var processed []Transaction
 	transactions = gettext(transactions)
 	processed = mergemultiedges(transactions, processed)
 	fmt.Println(processed)
 	getadjlist(processed)
-	//fmt.Println(processed)
-	fmt.Println(iscyclic(processed, getadjlist(processed)))
+	resultt := false
+	for i:=0; i<100000; i++ { // to do I must add a check for the number of loops
+		resultt, loopelements = iscyclic(processed, getadjlist(processed), &loopelements)
+		if resultt {
+			processed = loopfixer(processed, loopelements)
+			loopelements = nil
+		}
+	} 
+	fmt.Println(processed)
 }  
 
 func isatransactioner(frommm string, list []string) bool {
